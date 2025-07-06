@@ -44,7 +44,7 @@ Output Folder Structure
 Example (output_folder = "processed_karaoke/"):
 
 processed_karaoke/
-├── 0.zip
+├── 0.zip <br/>
 ├── 1.zip
 ├── 2.zip
 ├── ...
