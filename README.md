@@ -1,4 +1,4 @@
-#Karaoke Processor GUI - User Guide
+# Karaoke Processor GUI - User Guide
 ==================================
 
 A simple GUI tool to compress and index karaoke song files from legacy systems.
