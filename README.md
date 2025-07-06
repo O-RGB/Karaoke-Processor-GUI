@@ -1,50 +1,56 @@
-# Karaoke Processor GUI - User Guide
-==================================
+<h1>Karaoke Processor GUI - User Guide</h1>
 
-A simple GUI tool to compress and index karaoke song files from legacy systems.
-Designed to be placed directly inside the "Karaoke Extreme" software folder.
+<p>A simple GUI tool to compress and index karaoke song files from legacy systems.<br>
+Designed to be placed directly inside the "Karaoke Extreme" software folder.</p>
 
---------------------------------------------------------------------------------
-How to Use
---------------------------------------------------------------------------------
+<hr>
 
-1. Place this program (.exe) in the same folder where Karaoke Extreme is installed.
-   - The input folder will be auto-filled.
-   - The output folder will be auto-filled to "processed_karaoke".
-   - You can change these paths manually if needed.
+<h2>How to Use</h2>
 
-2. Launch the program.
+<ol>
+  <li>
+    Place this program (.exe) in the same folder where Karaoke Extreme is installed.<br>
+    &nbsp;&nbsp;- The input folder will be auto-filled.<br>
+    &nbsp;&nbsp;- The output folder will be auto-filled to "processed_karaoke".<br>
+    &nbsp;&nbsp;- You can change these paths manually if needed.
+  </li>
+  <li>Launch the program.</li>
+  <li>
+    Configure options:<br>
+    &nbsp;&nbsp;- <b>Batch Size:</b><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Number of songs to include per ZIP file.<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Larger batches reduce file count but may slow down extraction.<br>
+    &nbsp;&nbsp;- <b>ZIP Size Limit (MB):</b><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;When total size of batch ZIPs reaches this limit,<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;the program groups them into larger archive ZIPs (karaoke_0.zip, karaoke_1.zip, etc.)<br>
+    &nbsp;&nbsp;- <b>Create ZIP Files:</b><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Enable to save the processed songs into compressed .zip format.<br>
+    &nbsp;&nbsp;- <b>Worker Threads:</b><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Higher thread count increases processing speed (recommended: CPU cores × 2)
+  </li>
+  <li>
+    Press <b>[Start]</b> to begin.<br>
+    &nbsp;&nbsp;- Logs are displayed in real-time.<br>
+    &nbsp;&nbsp;- You can press <b>[Stop]</b> to cancel anytime.
+  </li>
+  <li>
+    After processing:<br>
+    &nbsp;&nbsp;- Output is saved under the selected Output Folder.<br>
+    &nbsp;&nbsp;- Index files are created in:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>Data/master_index_v6.json</code><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>Data/preview_chunk_v6/*.json</code>
+  </li>
+</ol>
 
-3. Configure options:
-   - Batch Size:
-     - Number of songs to include per ZIP file.
-     - Larger batches reduce file count but may slow down extraction.
-   - ZIP Size Limit (MB):
-     - When total size of batch ZIPs reaches this limit,
-       the program groups them into larger archive ZIPs (karaoke_0.zip, karaoke_1.zip, etc.)
-   - Create ZIP Files:
-     - Enable to save the processed songs into compressed .zip format.
-   - Worker Threads:
-     - Higher thread count increases processing speed (recommended: CPU cores × 2)
+<hr>
 
-4. Press [Start] to begin.
-   - Logs are displayed in real-time.
-   - You can press [Stop] to cancel anytime.
+<h2>Output Folder Structure</h2>
 
-5. After processing:
-   - Output is saved under the selected Output Folder.
-   - Index files are created in:
-     - Data/master_index_v6.json
-     - Data/preview_chunk_v6/*.json
+<p>Example (output_folder = "processed_karaoke/"):</p>
 
---------------------------------------------------------------------------------
-Output Folder Structure
---------------------------------------------------------------------------------
-
-Example (output_folder = "processed_karaoke/"):
-
+<pre>
 processed_karaoke/
-├── 0.zip <br/>
+├── 0.zip
 ├── 1.zip
 ├── 2.zip
 ├── ...
@@ -56,68 +62,78 @@ processed_karaoke/
         ├── 0.json
         ├── 1.json
         └── ...
+</pre>
 
-Explanation:
+<p>Explanation:</p>
+<ol>
+  <li><code>0.zip</code>, <code>1.zip</code>, etc. → Batch ZIP files containing N songs each (based on Batch Size).<br>
+    &nbsp;&nbsp;- Inside each ZIP:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;- If song is type NCN:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Contains compressed files:<br>
+    <pre>
+├── song.mid
+├── song.lyr
+└── song.cur
+    </pre>
+    &nbsp;&nbsp;&nbsp;&nbsp;- If song is type EMK:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Contains the <code>.emk</code> file directly:<br>
+    <pre>
+└── 12.emk  (example name: [originalIndex].emk)
+    </pre>
+  </li>
+  <li><code>karaoke_0.zip</code>, <code>karaoke_1.zip</code>, etc. → Large ZIP archives that group batch ZIPs.<br>
+    &nbsp;&nbsp;- These are generated when the ZIP Size Limit is reached.<br>
+    &nbsp;&nbsp;- Inside:<br>
+    <pre>
+├── 0.zip
+├── 1.zip
+├── 2.zip
+└── ...
+    </pre>
+  </li>
+  <li><code>Data/master_index_v6.json</code> → The main search index metadata file.</li>
+  <li><code>Data/preview_chunk_v6/*.json</code> → Preview chunks storing searchable song info.</li>
+</ol>
 
-1. `0.zip`, `1.zip`, etc. → Batch ZIP files containing N songs each (based on Batch Size).
-   - Inside each ZIP:
-     - If song is type NCN:
-       - Contains compressed files:
-         ├── song.mid
-         ├── song.lyr
-         └── song.cur
-     - If song is type EMK:
-       - Contains the `.emk` file directly:
-         └── 12.emk  (example name: [originalIndex].emk)
+<hr>
 
-2. `karaoke_0.zip`, `karaoke_1.zip`, etc. → Large ZIP archives that group batch ZIPs.
-   - These are generated when the ZIP Size Limit is reached.
-   - Inside:
-     ├── 0.zip
-     ├── 1.zip
-     ├── 2.zip
-     └── ...
+<h2>Running from Python (Developer Mode)</h2>
 
-3. `Data/master_index_v6.json` → The main search index metadata file.
-4. `Data/preview_chunk_v6/*.json` → Preview chunks storing searchable song info.
+<ol>
+  <li>Install required packages:
+    <pre>pip install PyQt6</pre>
+  </li>
+  <li>Run the script:
+    <pre>python karaoke_processor.py</pre>
+  </li>
+</ol>
 
---------------------------------------------------------------------------------
-Running from Python (Developer Mode)
---------------------------------------------------------------------------------
+<hr>
 
-1. Install required packages:
+<h2>Building a Standalone Executable (with PyInstaller)</h2>
 
-    pip install PyQt6
+<ol>
+  <li>Install PyInstaller:
+    <pre>pip install pyinstaller</pre>
+  </li>
+  <li>Build with:
+    <pre>pyinstaller --noconfirm --onefile --windowed karaoke_processor.py</pre>
+    <p>(Optional: With icon)</p>
+    <pre>pyinstaller --noconfirm --onefile --windowed --icon=icon.ico karaoke_processor.py</pre>
+  </li>
+  <li>Output will be available in the <code>dist/</code> folder.</li>
+</ol>
 
-2. Run the script:
+<hr>
 
-    python karaoke_processor.py
+<h2>Additional Notes</h2>
 
---------------------------------------------------------------------------------
-Building a Standalone Executable (with PyInstaller)
---------------------------------------------------------------------------------
+<ul>
+  <li>The tool detects and processes only valid, complete songs.</li>
+  <li>Songs missing any required file (.mid, .lyr, .cur, .emk) will be skipped.</li>
+  <li>The output format is optimized for efficient search, storage, and transfer.</li>
+</ul>
 
-1. Install PyInstaller:
+<hr>
 
-    pip install pyinstaller
-
-2. Build with:
-
-    pyinstaller --noconfirm --onefile --windowed karaoke_processor.py
-
-    (Optional: With icon)
-    pyinstaller --noconfirm --onefile --windowed --icon=icon.ico karaoke_processor.py
-
-3. Output will be available in the `dist/` folder.
-
---------------------------------------------------------------------------------
-Additional Notes
---------------------------------------------------------------------------------
-
-- The tool detects and processes only valid, complete songs.
-- Songs missing any required file (.mid, .lyr, .cur, .emk) will be skipped.
-- The output format is optimized for efficient search, storage, and transfer.
-
---------------------------------------------------------------------------------
-
-Thank you for using Karaoke Processor GUI!
+<p>Thank you for using Karaoke Processor GUI!</p>
