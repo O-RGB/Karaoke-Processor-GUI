@@ -3,6 +3,14 @@
 <p>A simple GUI tool to compress and index karaoke song files from legacy systems.<br>
 Designed to be placed directly inside the "Karaoke Extreme" software folder.</p>
 
+
+<h2>Download</h2>
+<p>You can download the latest builds for MacOS and Windows below:</p>
+<ul>
+  <li><a href="https://github.com/O-RGB/Karaoke-Processor-GUI/raw/main/build/%5BMacOs%5D%20Karaoke%20Processor.zip" target="_blank">MacOS Version ([MacOs] Karaoke Processor.zip)</a></li>
+</ul>
+
+
 <hr>
 
 <h2>How to Use</h2>
