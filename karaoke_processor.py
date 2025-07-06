@@ -17,7 +17,7 @@ import datetime
 from dataclasses import dataclass, asdict
 
 # ==============================================================================
-# Data Structures
+# Data Structures (ไม่เปลี่ยนแปลง)
 # ==============================================================================
 
 @dataclass
@@ -61,7 +61,7 @@ class MasterIndex:
     lastBuilt: str
 
 # ==============================================================================
-# Backend Logic
+# Backend Logic (ไม่เปลี่ยนแปลง)
 # ==============================================================================
 
 class DBFParser:
@@ -305,6 +305,32 @@ class ProcessingThread(QThread):
         self.status_update.emit("Stopping...")
         self.should_stop = True
 
+    # [+] เพิ่มเมธอดสำหรับสร้าง index.zip
+    def _create_index_archive(self, output_dir: str):
+        self.status_update.emit("--- Creating final index archive (index.zip) ---")
+        zip_output_path = os.path.join(output_dir, 'index.zip')
+        master_index_path = os.path.join(output_dir, 'Data', 'master_index_v6.json')
+        chunks_dir_path = os.path.join(output_dir, 'Data', 'preview_chunk_v6')
+
+        if not os.path.exists(master_index_path) or not os.path.isdir(chunks_dir_path):
+            raise FileNotFoundError("Index data not found. Cannot create index.zip.")
+
+        with zipfile.ZipFile(zip_output_path, 'w', zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+            # ใช้ os.path.relpath เพื่อให้ได้ path ภายใน zip ที่ถูกต้อง (เช่น Data/master_index_v6.json)
+            arcname_master = os.path.relpath(master_index_path, output_dir)
+            self.status_update.emit(f"Adding: {arcname_master}")
+            zf.write(master_index_path, arcname=arcname_master)
+
+            self.status_update.emit(f"Adding files from: {os.path.relpath(chunks_dir_path, output_dir)}")
+            for filename in os.listdir(chunks_dir_path):
+                file_on_disk = os.path.join(chunks_dir_path, filename)
+                if os.path.isfile(file_on_disk):
+                    arcname_chunk = os.path.relpath(file_on_disk, output_dir)
+                    zf.write(file_on_disk, arcname=arcname_chunk)
+        
+        self.status_update.emit(f"Successfully created '{zip_output_path}'")
+
+
     def run(self):
         try:
             def scaled_updater(start, end):
@@ -330,8 +356,6 @@ class ProcessingThread(QThread):
             if self.should_stop: return
 
             # 3. Song Processing (15-80%)
-            # --- FIX STARTS HERE ---
-            # Create a specific config for SongProcessor to avoid the TypeError
             processor_config = {
                 'batch_size': self.config['batch_size'],
                 'large_zip_size_limit_mb': self.config['large_zip_size_limit_mb'],
@@ -340,7 +364,6 @@ class ProcessingThread(QThread):
                 'status_callback': self.status_update.emit
             }
             processor = SongProcessor(**processor_config)
-            # --- FIX ENDS HERE ---
             
             song_updater = scaled_updater(15, 80)
             processed_count, total_songs = 0, len(all_records)
@@ -371,16 +394,22 @@ class ProcessingThread(QThread):
                 self.progress_update.emit(85)
                 processor.create_karaoke_archives()
             
-            # 5. Indexing (90-100%)
+            # [*] 5. Indexing (90-98%) - ปรับ Progress bar
             self.progress_update.emit(90)
             builder = IndexBuilder(self.config['output_folder_path'], self.status_update.emit)
-            builder.build_index(all_records, scaled_updater(90, 100))
+            builder.build_index(all_records, scaled_updater(90, 98))
+            
+            # [+] 6. Final Index Zipping (98-100%) - ขั้นตอนใหม่
+            if self.config['create_index_zip']:
+                self.progress_update.emit(98)
+                self._create_index_archive(self.config['output_folder_path'])
             
             self.progress_update.emit(100)
             self.finished.emit(True, f"Successfully processed {processed_count} songs.")
         except Exception as e:
             import traceback
             self.finished.emit(False, f"A critical error occurred: {e}\n{traceback.format_exc()}")
+
 class KaraokeGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -390,12 +419,11 @@ class KaraokeGUI(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Karaoke Processor")
-        self.setGeometry(100, 100, 550, 600) # Smaller window
+        self.setGeometry(100, 100, 550, 600)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # --- Combined Settings Group ---
         settings_group = QGroupBox("Settings")
         settings_layout = QGridLayout()
         settings_layout.addWidget(QLabel("Karaoke Folder:"), 0, 0)
@@ -413,7 +441,8 @@ class KaraokeGUI(QMainWindow):
         self.browse_output_btn.clicked.connect(self.browse_output_folder)
         settings_layout.addWidget(self.browse_output_btn, 1, 2)
         
-        self.create_zips_checkbox = QCheckBox("Create ZIP files")
+        # [*] แก้ไขคำอธิบายให้ชัดเจนขึ้น
+        self.create_zips_checkbox = QCheckBox("Create song batch ZIPs (karaoke_*.zip)")
         settings_layout.addWidget(self.create_zips_checkbox, 2, 0, 1, 3)
 
         settings_layout.addWidget(QLabel("Batch Size:"), 3, 0)
@@ -430,27 +459,29 @@ class KaraokeGUI(QMainWindow):
         self.max_workers_spin = QSpinBox()
         self.max_workers_spin.setRange(1, os.cpu_count() * 4 if os.cpu_count() else 16)
         settings_layout.addWidget(self.max_workers_spin, 5, 1)
+        
+        # [+] เพิ่ม Checkbox สำหรับสร้าง index.zip
+        self.create_index_zip_checkbox = QCheckBox("Create final index archive (index.zip)")
+        settings_layout.addWidget(self.create_index_zip_checkbox, 6, 0, 1, 3)
 
         settings_group.setLayout(settings_layout)
         main_layout.addWidget(settings_group)
 
-        # --- Status & Log Group ---
         log_group = QGroupBox("Processing Status")
         log_layout = QVBoxLayout()
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(True)
-        self.progress_bar.setFormat("%p%") # Show percentage
+        self.progress_bar.setFormat("%p%")
         log_layout.addWidget(self.progress_bar)
         self.status_label = QLabel("Ready.")
         log_layout.addWidget(self.status_label)
-        self.log_text = QTextEdit() # The "Terminal"
+        self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         log_layout.addWidget(self.log_text)
         log_group.setLayout(log_layout)
         main_layout.addWidget(log_group)
-        main_layout.setStretch(1, 1) # Make log area expand
+        main_layout.setStretch(1, 1)
 
-        # --- Control Buttons ---
         button_layout = QHBoxLayout()
         self.clear_log_btn = QPushButton("Clear Log")
         self.clear_log_btn.clicked.connect(self.log_text.clear)
@@ -484,26 +515,18 @@ class KaraokeGUI(QMainWindow):
             'create_zips': self.create_zips_checkbox.isChecked(),
             'batch_size': self.batch_size_spin.value(),
             'large_zip_size_limit_mb': self.zip_size_spin.value(),
-            'max_workers': self.max_workers_spin.value()
+            'max_workers': self.max_workers_spin.value(),
+            'create_index_zip': self.create_index_zip_checkbox.isChecked() # [+] เพิ่ม config
         }
+        
     def load_defaults_to_ui(self):
-        """
-        Sets default values in the UI, correctly determining the application's
-        base directory for any platform (Windows, macOS, Linux).
-        """
         if getattr(sys, 'frozen', False):
-            # We are running in a bundle (frozen by PyInstaller).
-            # The path of the executable.
             executable_path = sys.executable
             if sys.platform == 'darwin':
-                # On macOS, the executable is inside YourApp.app/Contents/MacOS/
-                # We need to go up three levels to get to the folder containing YourApp.app
                 script_dir = os.path.abspath(os.path.join(os.path.dirname(executable_path), "../../.."))
             else:
-                # On Windows and Linux, the executable is in the root of the bundle.
                 script_dir = os.path.dirname(executable_path)
         else:
-            # We are running in a normal Python environment (e.g., 'python your_script.py').
             try:
                 script_dir = os.path.dirname(os.path.abspath(__file__))
             except NameError:
@@ -513,8 +536,8 @@ class KaraokeGUI(QMainWindow):
         self.create_zips_checkbox.setChecked(True)
         self.batch_size_spin.setValue(100)
         self.zip_size_spin.setValue(500)
-        # Use a sensible default for worker threads
         self.max_workers_spin.setValue(os.cpu_count() * 2 if os.cpu_count() else 8)
+        self.create_index_zip_checkbox.setChecked(True) # [+] ตั้งค่าเริ่มต้น
         
     def validate_config(self) -> bool:
         if not os.path.isdir(self.main_folder_edit.text()):
